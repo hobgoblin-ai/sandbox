@@ -1,0 +1,16 @@
+# Policy used by scripts/e2e-fedora.sh. No secrets needed.
+version = 1
+
+[[rule]]
+host = "pypi.org"
+action = "tunnel"
+
+[[rule]]
+host = "github.com"
+action = "inspect"
+  [[rule.allow]]
+  methods = ["GET"]
+  paths = ["/containers/**"]
+  [[rule.allow]]
+  methods = ["POST"]
+  paths = ["/containers/*/git-upload-pack"]

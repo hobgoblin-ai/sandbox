@@ -1,0 +1,33 @@
+; SELinux domain for the hobgoblin proxy container.
+;
+; Built on the udica templates that container-selinux installs under
+; /usr/share/udica/templates. Compared with the default container_t:
+;
+;   - outbound TCP only to http_port_t (80, 443, 8443, ... see
+;     `semanage port -l | grep ^http_port_t`) and DNS over TCP.
+;     container_t may connect to any port.
+;   - may listen on 3128 (squid_port_t), where the agent reaches it.
+;   - everything else (rootfs, :Z volumes, MCS separation from the agent)
+;     comes from the stock container rules via the container block.
+;
+; Install:   make selinux-install     (or the semodule line below)
+;   sudo semodule -i selinux/hobgoblin_proxy.cil \
+;       /usr/share/udica/templates/base_container.cil \
+;       /usr/share/udica/templates/net_container.cil
+; Use:       hobgoblin run --selinux hobgoblin ...
+; Remove:    sudo semodule -r hobgoblin_proxy
+;
+; If a policy rule uses action = "tcp" on another port, allow that port's
+; type here, e.g. for git over ssh:
+;   (allow process ssh_port_t (tcp_socket (name_connect)))
+
+(block hobgoblin_proxy
+    (blockinherit container)
+    (blockinherit restricted_net_container)
+
+    ; Resolver fallback to TCP for large DNS answers.
+    (allow process dns_port_t (tcp_socket (name_connect)))
+
+    ; The proxy's listening port.
+    (allow process squid_port_t (tcp_socket (name_bind)))
+)

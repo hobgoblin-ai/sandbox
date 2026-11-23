@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="840" height="234" viewBox="0 0 840 234" role="img" aria-labelledby="title desc">
+  <title id="title">An OpenCode request under the example policy</title>
+  <desc id="desc">OpenCode runs in a krun microVM with no direct internet route. The proxy checks the request against the policy. It adds the real bearer token to POST /v1/responses, or rejects POST /v1/files before it reaches OpenAI.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0 0 8 4 0 8Z" fill="#34495e"/>
+    </marker>
+    <marker id="arrow-deny" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0 0 8 4 0 8Z" fill="#974024"/>
+    </marker>
+  </defs>
+  <rect x="1" y="1" width="838" height="232" rx="12" fill="#fff" stroke="#c9d5da"/>
+  <rect x="15" y="15" width="493" height="204" rx="8" fill="#f1f5f7" stroke="#bdcbd3" stroke-dasharray="5 4"/>
+  <g font-family="system-ui, sans-serif" fill="#1d303e">
+    <g font-size="13" font-weight="700" letter-spacing="1">
+      <text x="31" y="40">ROOTLESS PODMAN SESSION</text>
+      <text x="679" y="40">UPSTREAM</text>
+    </g>
+    <rect x="30" y="66" width="166" height="82" rx="7" fill="#fff" stroke="#839ba9"/>
+    <text x="45" y="99" font-size="20" font-weight="700">OpenCode</text>
+    <text x="45" y="125" font-size="16">krun microVM</text>
+    <path d="M196 112H314" stroke="#34495e" stroke-width="2" marker-end="url(#arrow)"/>
+    <g text-anchor="middle" font-size="13" fill="#425b68">
+      <text x="255" y="89">Internal network</text>
+      <text x="255" y="135">placeholder key</text>
+    </g>
+    <rect x="316" y="66" width="173" height="82" rx="7" fill="#173f47"/>
+    <text x="332" y="99" fill="#fff" font-size="20" font-weight="700">Policy proxy</text>
+    <text x="332" y="125" fill="#ddf3ef" font-size="16">TOML + API key</text>
+    <path d="M489 112H660" stroke="#34495e" stroke-width="2" marker-end="url(#arrow)"/>
+    <g text-anchor="middle" fill="#125447">
+      <text x="578" y="89" font-size="14" font-weight="700">POST /v1/responses</text>
+      <text x="580" y="135" font-size="13">real bearer token</text>
+    </g>
+    <rect x="663" y="66" width="160" height="82" rx="7" fill="#e5f3ee" stroke="#71a393"/>
+    <text x="679" y="99" font-size="20" font-weight="700">OpenAI</text>
+    <text x="679" y="125" font-size="16">api.openai.com</text>
+    <path d="M333 148V175" stroke="#974024" stroke-width="2" marker-end="url(#arrow-deny)"/>
+    <rect x="203" y="178" width="286" height="29" rx="5" fill="#f9e6db"/>
+    <text x="346" y="198" text-anchor="middle" font-size="14" font-weight="600" fill="#823919">POST /v1/files · rejected locally</text>
+  </g>
+</svg>

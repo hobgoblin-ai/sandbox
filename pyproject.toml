@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hobgoblin"
+version = "0.1.0"
+description = "Run coding agents in a krun microVM with default-deny, policy-controlled egress"
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.12"
+# The host-side launcher is standard library only. The proxy (inside its
+# container) needs mitmproxy.
+dependencies = []
+
+[project.optional-dependencies]
+proxy = ["mitmproxy>=12,<13"]
+test = ["pytest>=8", "mitmproxy>=12,<13"]
+
+[project.scripts]
+hobgobs = "hobgoblin.cli:main"
+hobgoblin-proxy = "hobgoblin.proxy_main:main"
+
+[dependency-groups]
+dev = ["pytest>=8", "mitmproxy>=12,<13"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

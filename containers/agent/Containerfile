@@ -1,0 +1,18 @@
+# Example agent image: a general dev toolbox. Any OCI image works with hobgoblin;
+# it only needs to honour HTTP(S)_PROXY and SSL_CERT_FILE, as almost all
+# tools do.
+#   podman build -t localhost/hobgoblin-agent:latest containers/agent
+
+FROM registry.fedoraproject.org/fedora:43
+
+RUN dnf -y install --setopt=install_weak_deps=False \
+      git python3 python3-pip nodejs npm curl jq ripgrep which procps-ng \
+      iproute bind-utils ca-certificates \
+ && dnf clean all
+
+RUN curl -fsSL https://opencode.ai/v2/install | bash
+RUN curl -fsSL https://claude.ai/install.sh | bash
+ENV PATH="/root/.opencode/bin:/root/.local/bin:${PATH}"
+
+WORKDIR /workspace
+CMD ["bash", "-l"]

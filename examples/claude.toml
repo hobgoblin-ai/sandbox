@@ -1,0 +1,13 @@
+version = 1
+
+[[rule]]
+host = "api.anthropic.com"
+action = "inspect"
+
+[[rule.allow]]
+methods = ["POST"]
+paths = ["/v1/messages", "/v1/messages/count_tokens"]
+
+[[rule.inject]]
+header = "x-api-key"
+secret = "anthropic_api_key"

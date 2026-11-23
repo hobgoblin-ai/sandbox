@@ -1,0 +1,80 @@
+# Trustify development image for Hobgoblin. Build from the repository root:
+#   podman build -t localhost/hobgoblin-agent:latest containers/agent
+FROM registry.fedoraproject.org/fedora:45
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+RUN dnf -y install --setopt=install_weak_deps=False \
+      git python3 python3-pip curl jq ripgrep which nodejs npm procps-ng iproute bind-utils \
+      shadow-utils tar gzip unzip zip xz zstd \
+      gcc gcc-c++ make cmake ninja-build clang clang-libs lld perl-core \
+      pkgconf-pkg-config openssl-devel zlib-devel xz-devel \
+      postgresql tzdata glibc-langpack-en squashfs-tools \
+      ca-certificates && dnf clean all
+
+ENV RUSTUP_HOME=/usr/local/rustup \
+    CARGO_HOME=/usr/local/cargo \
+    PATH=/usr/local/cargo/bin:$PATH
+
+ARG RUST_VERSION=1.96.0
+RUN curl --proto '=https' --tlsv1.2 -fsSL https://sh.rustup.rs | sh -s -- \
+      -y --no-modify-path --profile minimal --default-toolchain "${RUST_VERSION}" \
+      --component rustfmt --component clippy \
+ && rustup --version && rustc --version && cargo --version
+
+FROM registry.fedoraproject.org/fedora:45
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+RUN dnf -y install --setopt=install_weak_deps=False \
+      git python3 python3-pip curl jq ripgrep which nodejs npm procps-ng iproute bind-utils \
+      shadow-utils tar gzip unzip zip xz zstd \
+      gcc gcc-c++ make cmake ninja-build clang clang-libs lld perl-core \
+      pkgconf-pkg-config openssl-devel zlib-devel xz-devel \
+      postgresql tzdata glibc-langpack-en squashfs-tools \
+      ca-certificates && dnf clean all
+
+ENV RUSTUP_HOME=/usr/local/rustup \
+    CARGO_HOME=/usr/local/cargo \
+    PATH=/usr/local/cargo/bin:$PATH
+ARG RUST_VERSION=1.96.0
+RUN curl --proto '=https' --tlsv1.2 -fsSL https://sh.rustup.rs | sh -s -- \
+      -y --no-modify-path --profile minimal --default-toolchain "${RUST_VERSION}" \
+      --component rustfmt --component clippy --component rust-analyzer \
+ && rustup --version && rustc --version && cargo --version
+ARG NEXTEST_VERSION=0.9.100
+ARG CARGO_DENY_VERSION=0.20.2
+ARG CARGO_AUDIT_VERSION=0.22.2
+RUN cargo install --locked \
+      "cargo-nextest@${NEXTEST_VERSION}" \
+      "cargo-deny@${CARGO_DENY_VERSION}" \
+      "cargo-audit@${CARGO_AUDIT_VERSION}" \
+ && cargo nextest --version && cargo deny --version && cargo audit --version \
+    && rm -rf "${CARGO_HOME}/registry" "${CARGO_HOME}/git"
+
+# INSTALL llm cli
+RUN curl -fsSL https://opencode.ai/v2/install | bash
+RUN curl -fsSL https://claude.ai/install.sh | bash
+RUN curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/master/install.sh | bash
+RUN curl -fsSL https://pi.dev/install.sh | bash
+
+# env to shut off telemetry stuff
+ENV CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1 \
+    DISABLE_TELEMETRY=1 \
+    DISABLE_ERROR_REPORTING=1 \
+    DISABLE_FEEDBACK_COMMAND=1 \
+    CLAUDE_CODE_DISABLE_FEEDBACK_SURVEY=1 \
+    DISABLE_AUTOUPDATER=1 \
+    CLAUDE_CODE_DISABLE_OFFICIAL_MARKETPLACE_AUTOINSTALL=1 \
+    DO_NOT_TRACK=1
+# --- opencode ---
+ENV OPENCODE_DISABLE_AUTOUPDATE=1 \
+    OPENCODE_DISABLE_SHARE=1
+# --- pi ---
+ENV PI_OFFLINE=1 \
+    PI_TELEMETRY=0 \
+    PI_SKIP_VERSION_CHECK=1
+
+WORKDIR /workspace
+
+CMD ["bash", "-l"]

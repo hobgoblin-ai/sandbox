@@ -1,0 +1,119 @@
+# hobgoblin egress policy: a Python/Node coding agent working on one GitHub org.
+#
+# Everything not listed is denied. Check a policy with:
+#   hobgobs check-policy examples/policy.toml
+#
+# Actions:
+#   tunnel  - TLS passthrough; SNI must equal the host. Cheapest, no path control.
+#   inspect - TLS terminated by a per-session CA that can only sign the
+#             inspect hosts; method/path allow-lists and credential injection.
+#   tcp     - opaque TCP to explicit ports (e.g. git over ssh). Use sparingly.
+
+version = 1
+
+[defaults]
+mode = "enforce"      # "audit" = allow everything (still no private IPs), log would-be denials
+allow_ech = false
+
+[network]
+allow_cidrs = []      # e.g. ["10.20.0.0/16"] for an internal package mirror
+deny_cidrs  = []      # hobgoblin also adds the host's own addresses at launch
+
+
+# --- Model APIs: the agent never sees the keys ------------------------------
+# With these inject rules, hobgobs sets ANTHROPIC_API_KEY and OPENAI_API_KEY
+# to placeholders in the guest. The proxy replaces them with the real keys.
+
+[[rule]]
+host = "api.anthropic.com"
+action = "inspect"
+  [[rule.allow]]
+  methods = ["POST"]
+  paths = ["/v1/messages", "/v1/messages/count_tokens"]
+  [[rule.inject]]
+  header = "x-api-key"
+  secret = "anthropic_api_key"     # podman secret create anthropic_api_key -
+
+# OpenAI, API-key auth only. Covers Codex CLI, opencode, Aider and the OpenAI SDKs.
+# websocket = true: Codex CLI streams over a WebSocket on GET /v1/responses; without
+# it hobgoblin refuses the upgrade. The handshake carries the Authorization header,
+# so injection works the same as for plain HTTPS.
+# Not listed, so denied: files, uploads, vector stores, batches, fine-tuning,
+# assistants, images/audio, admin and organization endpoints.
+# Not supported on purpose: "Sign in with ChatGPT" (chatgpt.com/backend-api,
+# auth.openai.com). It keeps a refreshable OAuth token inside the VM.
+[[rule]]
+host = "api.openai.com"
+action = "inspect"
+websocket = true
+  [[rule.allow]]
+  methods = ["POST"]
+  paths = [
+    "/v1/responses",               # Responses API (Codex, opencode, SDKs), HTTP + SSE
+    "/v1/responses/compact",       # Codex context compaction
+    "/v1/responses/input_tokens",  # token counting
+    "/v1/chat/completions",        # older clients, Aider
+  ]
+  [[rule.allow]]
+  methods = ["GET"]
+  paths = [
+    "/v1/responses",               # WebSocket handshake (Upgrade: websocket)
+    "/v1/models",
+    "/v1/models/*",
+  ]
+  [[rule.inject]]
+  header = "Authorization"
+  secret = "openai_api_key"        # podman secret create openai_api_key -
+  prefix = "Bearer "
+
+# --- Package registries: read-only by nature, passthrough is fine ----------
+[[rule]]
+host = "pypi.org"
+action = "tunnel"
+
+[[rule]]
+host = "files.pythonhosted.org"
+action = "tunnel"
+
+[[rule]]
+host = "registry.npmjs.org"
+action = "tunnel"
+
+# --- GitHub: allowlisting the domain would allow pushing anywhere ----------
+# Inspect it and allow reads plus fetches from one org only. Pushes
+# (git-receive-pack) and gists are not listed, so they are denied.
+[[rule]]
+host = "github.com"
+action = "inspect"
+  [[rule.allow]]
+  methods = ["GET"]
+  paths = ["/myorg/**"]
+  [[rule.allow]]
+  methods = ["POST"]
+  paths = ["/myorg/*/git-upload-pack"]
+  [[rule.inject]]
+  header = "Authorization"
+  secret = "github_token"
+  basic_user = "x-access-token"
+
+[[rule]]
+host = "api.github.com"
+action = "inspect"
+  [[rule.allow]]
+  methods = ["GET"]
+  paths = ["/repos/myorg/**", "/orgs/myorg/**"]
+  [[rule.inject]]
+  header = "Authorization"
+  secret = "github_token"
+  prefix = "Bearer "
+
+[[rule]]
+host = "codeload.github.com"
+action = "inspect"
+  [[rule.allow]]
+  methods = ["GET"]
+  paths = ["/myorg/**"]
+
+[[rule]]
+host = "objects.githubusercontent.com"
+action = "tunnel"

@@ -1,0 +1,62 @@
+# hobgoblin egress policy for OpenCode with an OpenAI API key.
+#
+# Everything not listed is denied. Check it with:
+#   hobgobs check-policy opencode.toml
+# The api.openai.com line must say "injects Authorization<-openai_api_key".
+#
+# Run:
+#   printf '%s' "$OPENAI_API_KEY" | podman secret create openai_api_key -   # once, real key
+#   hobgobs run --policy opencode.toml --workspace "$workspace" -- \
+#     opencode run --standalone --model openai/gpt-5.4 'Summarize this project.'
+#
+# OPENAI_API_KEY in the VM is only a placeholder so OpenCode starts; the proxy
+# replaces the Authorization header with the real key from the podman secret.
+#
+# Not allowed on purpose:
+#   opencode.ai          update checks (add -e OPENCODE_DISABLE_AUTOUPDATE=1 to skip them)
+#   chatgpt.com, auth.openai.com   "Sign in with ChatGPT" keeps an OAuth token in the VM
+
+version = 1
+
+[defaults]
+mode = "enforce"      # "audit" = allow everything (still no private IPs), log would-be denials
+allow_ech = false
+
+
+# --- OpenAI API: the agent never sees the key -------------------------------
+# Keep [[rule.inject]] directly under this [[rule]]: TOML attaches it to the
+# nearest [[rule]] above it.
+[[rule]]
+host = "api.openai.com"
+action = "inspect"
+websocket = true      # OpenCode and Codex try WebSocket mode first (GET /v1/responses + Upgrade)
+  [[rule.allow]]
+  methods = ["POST"]
+  paths = [
+    "/v1/responses",               # Responses API, HTTP + SSE (fallback when WebSocket fails)
+    "/v1/responses/compact",       # context compaction
+    "/v1/responses/input_tokens",  # token counting
+    "/v1/chat/completions",        # older clients
+  ]
+  [[rule.allow]]
+  methods = ["GET"]
+  paths = [
+    "/v1/responses",               # WebSocket handshake
+    "/v1/models",
+    "/v1/models/*",
+  ]
+  [[rule.inject]]
+  header = "Authorization"
+  secret = "openai_api_key"
+  prefix = "Bearer "
+
+
+# --- OpenCode model catalog (optional) --------------------------------------
+# Without it OpenCode uses the catalog built into the binary and the audit log
+# shows one denial at startup.
+[[rule]]
+host = "models.opencode.ai"
+action = "inspect"
+  [[rule.allow]]
+  methods = ["GET"]
+  paths = ["/**"]

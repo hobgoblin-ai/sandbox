@@ -1,0 +1,170 @@
+# hobgoblin tpa policy using opencode
+
+version = 1
+
+[defaults]
+mode = "enforce"      # "audit" = allow everything (still no private IPs), log would-be denials
+allow_ech = false
+
+[network]
+allow_cidrs = []      # e.g. ["10.20.0.0/16"] for an internal package mirror
+deny_cidrs  = []      # hobgoblin also adds the host's own addresses at launch
+
+
+[[rule]]
+host = "api.openai.com"
+action = "inspect"
+websocket = true      # OpenCode and Codex try WebSocket mode first (GET /v1/responses + Upgrade)
+  [[rule.allow]]
+  methods = ["POST"]
+  paths = [
+    "/v1/responses",               # Responses API, HTTP + SSE (fallback when WebSocket fails)
+    "/v1/responses/compact",       # context compaction
+    "/v1/responses/input_tokens",  # token counting
+    "/v1/chat/completions",        # older clients
+  ]
+  [[rule.allow]]
+  methods = ["GET"]
+  paths = [
+    "/v1/responses",               # WebSocket handshake
+    "/v1/models",
+    "/v1/models/*",
+  ]
+  [[rule.inject]]
+  header = "Authorization"
+  secret = "openai_api_key"
+  prefix = "Bearer "
+
+
+# --- OpenCode model catalog (optional) --------------------------------------
+# Without it OpenCode uses the catalog built into the binary and the audit log
+# shows one denial at startup.
+[[rule]]
+host = "models.opencode.ai"
+action = "inspect"
+  [[rule.allow]]
+  methods = ["GET"]
+  paths = ["/**"]
+
+
+# --- GitHub: allowlisting the domain would allow pushing anywhere ----------
+# Inspect it and allow reads plus fetches from one org only. Pushes
+# (git-receive-pack) and gists are not listed, so they are denied.
+[[rule]]
+host = "github.com"
+action = "inspect"
+  [[rule.allow]]
+  methods = ["GET"]
+  paths = ["/myorg/**"]
+  [[rule.allow]]
+  methods = ["GET"]
+  paths = ["/ctron/**"]  
+  [[rule.allow]]
+  methods = ["POST"]
+  paths = ["/myorg/*/git-upload-pack"]
+  [[rule.inject]]
+  header = "Authorization"
+  secret = "github_token"
+  basic_user = "x-access-token"
+  [[rule.allow]]
+  methods = ["GET"]                                                                                              
+  paths = ["/myorg/**", "/dejanb/osv/info/refs"]                                                                 
+  [[rule.allow]]                                                                                                 
+  methods = ["POST"]                                                                                             
+  paths = ["/myorg/*/git-upload-pack", "/dejanb/osv/git-upload-pack"]       
+  [[rule.allow]]
+  methods = ["GET"]                                                                                              
+  paths = ["/myorg/**", "/ctron/spdx-rs/info/refs"]                                                                 
+  [[rule.allow]]
+  methods = ["GET"]
+  paths = ["/myorg/**", "/RustSec/advisory-db.git/info/refs"]
+  [[rule.allow]]
+  methods = ["GET"]
+  paths = ["/RustSec/*/info/refs", "/rustsec/*/info/refs"]
+  [[rule.allow]]
+  methods = ["POST"]
+  paths = ["/RustSec/*/git-upload-pack", "/rustsec/*/git-upload-pack"]
+  [[rule.allow]]
+  methods = ["POST"]
+  paths = ["/ctron/spdx-rs/git-upload-pack"]
+    
+[[rule]]
+host = "api.github.com"
+action = "inspect"
+  [[rule.allow]]
+  methods = ["GET"]
+  paths = ["/repos/myorg/**", "/orgs/myorg/**"]
+  [[rule.inject]]
+  header = "Authorization"
+  secret = "github_token"
+  prefix = "Bearer "
+  [[rule.allow]]
+  methods = ["GET", "HEAD"]
+  paths = ["/repos/RustSec/advisory-db/tarball", "/repos/RustSec/advisory-db/tarball/**"]
+
+    
+[[rule]]
+host = "codeload.github.com"
+action = "inspect"
+  [[rule.allow]]
+  methods = ["GET"]
+  paths = ["/myorg/**"]
+  [[rule.allow]]
+  methods = ["GET", "HEAD"]
+  paths = ["/RustSec/advisory-db/tar.gz/**"]
+    
+[[rule]]
+host = "objects.githubusercontent.com"
+action = "tunnel"
+
+[[rule]]
+host="mcp.deepwiki.com"
+action="tunnel"
+
+[[rule]]
+host="search.parallel.ai"
+action="tunnel"
+
+[[rule]]
+host="cdn.jsdelivr.net"
+action="tunnel"
+
+[[rule]]
+host="api.anaconda.org"
+action="tunnel"
+
+[[rule]]
+host="docs.devin.ai"
+action="tunnel"
+     
+[[rule]]
+host="registry.modelcontextprotocol.io"
+action="tunnel"
+
+[[rule]]
+host="crates.io"
+action="tunnel"
+
+[[rule]]
+host="static.crates.io"
+action="tunnel"
+
+[[rule]]
+host = "index.crates.io"
+action = "tunnel"
+
+[[rule]]
+host = "pypi.org"
+action = "tunnel"
+
+[[rule]]
+host = "files.pythonhosted.org"
+action = "tunnel"
+
+[[rule]]
+host = "registry.npmjs.org"
+action = "tunnel"
+
+[[rule]]
+host = "doc.rust-lang.org"
+action = "tunnel"
